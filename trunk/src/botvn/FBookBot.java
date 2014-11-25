@@ -1,36 +1,52 @@
 package botvn;
 
-//import jodd.lagarto.dom.jerry.Jerry;
-//import jodd.lagarto.dom.jerry.JerryFunction;
-import botvn.libraries.Log;
+import botvn.botconfig.BotConfig;
+import botvn.botconfig.BotConfigListener;
+import botvn.botconfig.BotConfigRequest;
+import botvn.libraries.BotUtils;
+import botvn.libraries.LoggingUtils;
 import botvn.libraries.LoginInfo;
-import botvn.libraries.MessageAds;
-import com.sun.corba.se.impl.orbutil.closure.Constant;
+import botvn.libraries.message.BotMessageAds;
 import jodd.jerry.Jerry;
 import jodd.jerry.JerryFunction;
 import jodd.mutable.MutableInteger;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.InvalidParameterSpecException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import org.apache.http.client.CookieStore;
+import org.apache.http.client.ex.HttpClientRequestSSL;
 import org.apache.http.cookie.Cookie;
 
-public class FBookBot {
-
-    private final static String EMAIL = "botvn.dev@gmail.com";
-    private final static String PASS = "botvn123456";
+public class FBookBot implements BotConfigListener{
     private static Response mResponseLogin = null;
-
+    
     public static void main(String[] args) throws IOException {
-        Response response;
-
-        // Send message ads
-        mResponseLogin = loginToFacebook(EMAIL, PASS);
-        String userID = getThisID(mResponseLogin);
+        new BotConfigRequest(new FBookBot()).start();
         
-        getUserInfo(userID, mResponseLogin.getCookieStore());
+        // Send message ads
+        //mResponseLogin = loginToFacebook(EMAIL, PASS);
+        //String userID = getThisID(mResponseLogin);
+        
+        //BotUtils.getFriends(mResponseLogin.getCookieStore());
+        
+        // Get access token long lived (2 months)
+        //String access_token = BotUtils.getAccessToken(mResponseLogin.getCookieStore());
+        //System.out.println("access_token: " + access_token);
+        
+        //getUserInfo(userID, mResponseLogin.getCookieStore());
 
         //LoginInfo loginInfo = getCurrentInfo(findFriends(mResponseLogin).getHtml());
         //MessageAds msg = new MessageAds(loginInfo.fbdtsg, mResponseLogin.getCookieStore());
@@ -58,10 +74,35 @@ public class FBookBot {
          addFriend(loginInfo.userId, "100008467447092", loginInfo.fbdtsg, responseLogin.getCookieStore());
          */
     }
+    
+    @Override
+    public void OnInitSuccess() {
+        try {
+            // Send message ads
+            mResponseLogin = loginToFacebook(BotConfig.Account.Email, BotConfig.Account.Pwd);
+            String userID = getThisID(mResponseLogin);
+            
+            //BotUtils.getFriends(mResponseLogin.getCookieStore());
+            
+            // Get access token long lived (2 months)
+            String access_token = BotUtils.getAccessToken(mResponseLogin.getCookieStore());
+            System.out.println("access_token: " + access_token);
+            
+        } catch (IOException ex) {
+            Logger.getLogger(FBookBot.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+    }
+
+    @Override
+    public void OnInitError() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+    
 
     static Response getUserInfo(String userID, CookieStore cks) throws IOException {
         //
-        String url = String.format(RemoteConstants.URL_PROFILE, userID);
+        String url = String.format(BotConfig.URLProfile, userID);
         
         Response me = HttpUtil.getLocal(url, cks);
         String htmlMe = me.getHtml();
@@ -70,15 +111,15 @@ public class FBookBot {
         // find fb_dtsg
         Jerry jerry = doc.$("input[name='fb_dtsg']");
         String fb_dtsg = jerry.attr("value");
-        Log.Log("faceID", "value = " + fb_dtsg);
-        Log.Log("fb_dtsg", "value = " + fb_dtsg);
+        LoggingUtils.print("faceID", "value = " + fb_dtsg);
+        LoggingUtils.print("fb_dtsg", "value = " + fb_dtsg);
         return null;
     }
 
     /**
      * Creates new Facebook session.
      */
-    static Response loginToFacebook(String email, String pass) throws IOException {
+    public static Response loginToFacebook(String email, String pass) throws IOException {
         System.out.println("login...");
         Response response = HttpUtil.getLocal("https://www.facebook.com", null);// HttpUtil.get("http://www.facebook.com", null);
         Jerry doc = Jerry.jerry(response.getHtml());
@@ -97,7 +138,7 @@ public class FBookBot {
     /**
      * Reads the page with friends proposals.
      */
-    static Response findFriends(Response response) throws IOException {
+    public static Response findFriends(Response response) throws IOException {
         System.out.println("finding friends...");
         // another link: https://www.facebook.com/?sk=ff
         // https://www.facebook.com/friends/requests/?ref=tn&fcref=ffb
@@ -108,7 +149,7 @@ public class FBookBot {
     /**
      * Lists all friends and invite some.
      */
-    static void listAndAddFriends(String html, final MutableInteger numberOfFriendsToInvite, final Response response) {
+    public static void listAndAddFriends(String html, final MutableInteger numberOfFriendsToInvite, final Response response) {
         System.out.println("listing friends...\n");
         Jerry doc = Jerry.jerry(html);
 
@@ -151,7 +192,7 @@ public class FBookBot {
         });
     }
 
-    static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, Response response) throws IOException {
+    public static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, Response response) throws IOException {
         System.out.println(">>> adding friend: " + facebookUserId);
 
         HashMap<String, String> params = new HashMap<String, String>();
@@ -182,7 +223,7 @@ public class FBookBot {
         System.out.println(response.getHtml());
     }
 
-    static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, CookieStore cks) throws IOException {
+    public static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, CookieStore cks) throws IOException {
         System.out.println(">>> adding friend: " + facebookUserId);
 
         HashMap<String, String> params = new HashMap<String, String>();
@@ -205,7 +246,7 @@ public class FBookBot {
     /**
      * Extracts facebook id from a link.
      */
-    static String extractId(Jerry link) {
+    public static String extractId(Jerry link) {
         String href = link.attr("href");
 
         int index1 = href.indexOf("id=");
@@ -223,7 +264,7 @@ public class FBookBot {
         return href.substring(index1 + 3, index2);
     }
 
-    static String getCurrentUserID(Jerry link) {
+    public static String getCurrentUserID(Jerry link) {
         String href = link.attr("id");
         if (href == null) {
             return "";
@@ -235,7 +276,7 @@ public class FBookBot {
         return "";
     }
 
-    static LoginInfo getCurrentInfo(String html) {
+    public static LoginInfo getCurrentInfo(String html) {
         Jerry doc = Jerry.jerry(html);
         // find user id
         Jerry userLink = doc.$("#facebook div#pagelet_bluebar ul li a img");
@@ -258,7 +299,7 @@ public class FBookBot {
      * @param loginResponse
      * @return 
      */
-    static String getThisID(Response loginResponse){
+    public static String getThisID(Response loginResponse){
         String userId = "";
         List<Cookie> cks = loginResponse.getCookies();
         for (Cookie ck : cks) {

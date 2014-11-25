@@ -1,5 +1,6 @@
 package botvn;
 
+import botvn.libraries.LoggingUtils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -18,19 +19,13 @@ import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.http.HeaderIterator;
-import org.apache.http.client.config.CookieSpecs;
 import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.ex.HttpClientRequest;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.cookie.params.CookieSpecPNames;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -50,7 +45,7 @@ public class HttpUtil {
 
         //RequestConfig globalConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.BEST_MATCH).build();
         CloseableHttpClient client = HttpClients.custom().setConnectionManager(cm).setDefaultCookieStore(cookieStore).build();
-        HttpClients.custom().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:33.0) Gecko/20100101 Firefox/33.0");
+        HttpClients.custom().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:10.0) Gecko/20100101 Firefox/10.0");
 
             //CloseableHttpClient client = HttpClients.custom().setConnectionManager(cm).setDefaultCookieStore(cookieStore).build();
         //HttpClients.custom().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:33.0) Gecko/20100101 Firefox/33.0");
@@ -122,8 +117,9 @@ public class HttpUtil {
         HttpClientContext context = HttpClientContext.create();
         context.setCookieStore(cookieStore);
         
-        HttpPost httpPost = new HttpPost(action);
-
+        HttpClientRequest httpPost = new HttpClientRequest(action);
+        httpPost.setDebugMode(LoggingUtils.DEBUG);
+        
         List<NameValuePair> nvps = new ArrayList<NameValuePair>();
         for (Map.Entry<String, String> entry : parameters.entrySet()) {
             String name = entry.getKey();
@@ -135,7 +131,7 @@ public class HttpUtil {
         }
 
         httpPost.setHeader(HTTP.CONTENT_TYPE, "text/xml");
-        httpPost.setEntity(new UrlEncodedFormEntity(nvps));
+        httpPost.setEntity(nvps);
         httpPost.addHeader(HTTP.CHUNK_CODING, "None");
         httpPost.addHeader(HTTP.USER_AGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:33.0) Gecko/20100101 Firefox/33.0");
         System.out.println("uri:" + httpPost.getURI().toString());

@@ -1,0 +1,5 @@
+0. select to send
+1. cho 60s send message
+2. lam cot thu tu
+3. join group
+4. tuong tac nhom
