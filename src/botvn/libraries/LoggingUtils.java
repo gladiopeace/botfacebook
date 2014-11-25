@@ -1,18 +1,18 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package botvn.libraries;
 
 import java.util.Calendar;
-import java.util.Date;
 
 /**
  *
  * @author vanvo
  */
-public class Log {
+public class LoggingUtils {
+    
+    /**
+     * 
+     */
+    public static boolean DEBUG = true;
+    public static boolean XDEBUG = true;
     
     /**
      * 
@@ -33,9 +33,9 @@ public class Log {
      * @param debug
      * @return 
      */
-    public static String Log(String debug){
-        
+    public static String print(String debug){
         String format = String.format("%s: %s\n", getTimeFormat(), debug);
+        System.out.println(format);
         return format;
     }
     
@@ -45,8 +45,9 @@ public class Log {
      * @param debug
      * @return 
      */
-    public static String Log(String title, String debug){
+    public static String print(String title, String debug){
         String format = String.format("%s\n%s %s\n", getTimeFormat(), title, debug);
+        System.out.println(format);
         return format;
     }
 }

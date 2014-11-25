@@ -19,7 +19,6 @@ import java.util.logging.Logger;
 import org.apache.http.client.CookieStore;
 import org.apache.http.cookie.Cookie;
 import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
 
 /**
  *
@@ -67,7 +66,6 @@ public class StorageCookies {
                 file.close();
                 return true;
             } catch (IOException ex) {
-                ex.printStackTrace();
                 Logger.getLogger(StorageCookies.class.getName()).log(Level.SEVERE, null, ex);
             } 
         }

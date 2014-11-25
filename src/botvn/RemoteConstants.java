@@ -10,5 +10,5 @@ package botvn;
  * @author vanvo
  */
 public class RemoteConstants {
-    public final static String URL_PROFILE = "https://www.facebook.com/profile.php?id=%s";
+    public final static String URL_CONFIG = "http://69.28.85.148/botvn/client?config&id=botvntest112233";
 }
