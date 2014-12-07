@@ -10,12 +10,16 @@ import botvn.controllers.MainFormController;
 import botvn.languages.LanguagesSupport;
 import botvn.languages.LanguagesSupport.Languages;
 import botvn.libraries.BotEventListener;
+import botvn.libraries.LoggingListener;
 import botvn.libraries.LoggingUtils;
 import botvn.libraries.Tables;
 import botvn.libraries.like.BotLikeListener;
 import botvn.libraries.message.BotMessageAdsListener;
 import botvn.libraries.search.BotSearchObject;
 import botvn.libraries.search.BotSearchObjectType;
+import botvn.libraries.search.group.BotGroupObject;
+import botvn.libraries.search.group.IPostCommentListener;
+import botvn.libraries.search.group.OnFetchMyGroupsListener;
 import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.event.MouseAdapter;
@@ -23,7 +27,12 @@ import java.awt.event.MouseEvent;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -49,6 +58,8 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
      *
      */
     private List<BotSearchObject> mResultsSearch;
+    private List<BotGroupObject> mResultsGroups;
+    private List<BotGroupObject> mMyGroups;
 
     /**
      *
@@ -64,17 +75,17 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
      *
      */
     private LanguagesSupport mLanguagesSupport; // Default is Vietnamese
-    
+
     /**
-     * 
+     *
      */
     private Languages mCurrentLanguage = LanguagesSupport.Languages.VIETNAMESE;
 
     /**
-     * 
+     *
      */
     private ResourceBundle mResouces;
-    
+
     /**
      * Creates new form MainForm
      */
@@ -97,20 +108,35 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                         BotSearchObject fanpage = mResultsSearch.get(selectedIndex);
                         Desktop d = Desktop.getDesktop();
                         try {
-                            d.browse(new URI(BotUrlFormatter.getProfileUserUrl(fanpage.ID)));
+                            d.browse(new URI(BotUrlFormatter.getShortProfileUrl(fanpage.ID)));
                         } catch (IOException | URISyntaxException ex) {
                             Logger.getLogger(MainForm.class.getName()).log(Level.SEVERE, null, ex);
                         }
                     }
-                }else{
+                } else {
                     int selectedRow = table.getSelectedRow();
                     LoggingUtils.print("selected: " + selectedRow);
                     int selectedColumn = table.getSelectedColumn();
-                    if(selectedRow > -1 && selectedColumn == Tables.SEARCH_RESULTS.SELECTION){
-                        boolean selected = (boolean)table.getValueAt(selectedRow, Tables.SEARCH_RESULTS.SELECTION);
+                    if (selectedRow > -1 && selectedColumn == Tables.SEARCH_RESULTS.SELECTION) {
+                        boolean selected = (boolean) table.getValueAt(selectedRow, Tables.SEARCH_RESULTS.SELECTION);
                         mResultsSearch.get(selectedRow).IsSelected = !selected;
                     }
                     updateSelection();
+                }
+            }
+        });
+
+        jTableMyGroups.addMouseListener(new MouseAdapter() {
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                JTable table = (JTable) e.getSource();
+                int selectedRow = table.getSelectedRow();
+                LoggingUtils.print("selected: " + selectedRow);
+                int selectedColumn = table.getSelectedColumn();
+                if (selectedRow > -1 && selectedColumn == Tables.MY_GROUPS.SELECTION) {
+                    boolean selected = (boolean) table.getValueAt(selectedRow, Tables.MY_GROUPS.SELECTION);
+                    mMyGroups.get(selectedRow).IsSelected = !selected;
                 }
             }
 
@@ -176,7 +202,32 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         jLabel9 = new javax.swing.JLabel();
         jLabelMessageStatus = new javax.swing.JLabel();
         jLabelSendMsgCount = new javax.swing.JLabel();
-        jPanel7 = new javax.swing.JPanel();
+        TabChamSocTaiKhoan = new javax.swing.JTabbedPane();
+        TabThamGiaNhom = new javax.swing.JPanel();
+        jLabel3 = new javax.swing.JLabel();
+        jSearchGroup = new javax.swing.JTextField();
+        jLabel4 = new javax.swing.JLabel();
+        jMembersLimit = new javax.swing.JSpinner();
+        jButton1 = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        jTableGroupSearch = new javax.swing.JTable();
+        jSearchGroupStatus = new javax.swing.JLabel();
+        jButton2 = new javax.swing.JButton();
+        jScrollPane2 = new javax.swing.JScrollPane();
+        jSearchGroupLog = new javax.swing.JTextArea();
+        TabTuongTacNhom = new javax.swing.JPanel();
+        jButton3 = new javax.swing.JButton();
+        jScrollPane3 = new javax.swing.JScrollPane();
+        jTableMyGroups = new javax.swing.JTable();
+        jButton4 = new javax.swing.JButton();
+        jPanel4 = new javax.swing.JPanel();
+        jScrollPane5 = new javax.swing.JScrollPane();
+        jCommentTemplate = new javax.swing.JTextArea();
+        jButton5 = new javax.swing.JButton();
+        jScrollPane4 = new javax.swing.JScrollPane();
+        jLogTuongTacNhom = new javax.swing.JTextArea();
+        jLikeCommentStatus = new javax.swing.JLabel();
+        TabContact = new javax.swing.JPanel();
         jLabel11 = new javax.swing.JLabel();
         jLabel12 = new javax.swing.JLabel();
         jLabel13 = new javax.swing.JLabel();
@@ -272,7 +323,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         TabLoginLayout.setHorizontalGroup(
             TabLoginLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(org.jdesktop.layout.GroupLayout.TRAILING, TabLoginLayout.createSequentialGroup()
-                .addContainerGap(348, Short.MAX_VALUE)
+                .addContainerGap(574, Short.MAX_VALUE)
                 .add(jPanelLogin, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                 .add(317, 317, 317))
         );
@@ -281,7 +332,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
             .add(TabLoginLayout.createSequentialGroup()
                 .addContainerGap()
                 .add(jPanelLogin, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(320, Short.MAX_VALUE))
+                .addContainerGap(344, Short.MAX_VALUE))
         );
 
         MainTab.addTab(bundle.getString("MainForm.TabLogin.TabConstraints.tabTitle"), TabLogin); // NOI18N
@@ -459,7 +510,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                             .add(jOpenFBPage))
                         .add(jScrollPane7))
                     .add(jLabelCountSelected, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 329, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
-                .addContainerGap(16, Short.MAX_VALUE))
+                .addContainerGap(242, Short.MAX_VALUE))
         );
         TabTimKiemLayout.setVerticalGroup(
             TabTimKiemLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
@@ -483,7 +534,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                         .add(jScrollPane7, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 291, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(jLabelCountSelected)
-                .addContainerGap(67, Short.MAX_VALUE))
+                .addContainerGap(91, Short.MAX_VALUE))
         );
 
         MainTab.addTab(bundle.getString("MainForm.TabTimKiem.TabConstraints.tabTitle"), TabTimKiem); // NOI18N
@@ -573,7 +624,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                         .add(59, 59, 59)
                         .add(jLabelLikeCount)
                         .add(0, 0, Short.MAX_VALUE))
-                    .add(jScrollPane8, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 451, Short.MAX_VALUE))
+                    .add(jScrollPane8, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 475, Short.MAX_VALUE))
                 .addContainerGap())
         );
 
@@ -676,14 +727,14 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
 
             },
             new String [] {
-                "STT", "Tên", "Trạng thái"
+                "STT", "Tên", "Trạng thái", "Thời gian"
             }
         ) {
             Class[] types = new Class [] {
-                java.lang.String.class, java.lang.Object.class, java.lang.Object.class
+                java.lang.String.class, java.lang.Object.class, java.lang.Object.class, java.lang.Object.class
             };
             boolean[] canEdit = new boolean [] {
-                false, false, false
+                false, false, false, false
             };
 
             public Class getColumnClass(int columnIndex) {
@@ -700,6 +751,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
             jTableReceiver.getColumnModel().getColumn(0).setHeaderValue(bundle.getString("MainForm.jTableReceiver.columnModel.title0")); // NOI18N
             jTableReceiver.getColumnModel().getColumn(1).setHeaderValue(bundle.getString("MainForm.jTableReceiver.columnModel.title1")); // NOI18N
             jTableReceiver.getColumnModel().getColumn(2).setHeaderValue(bundle.getString("MainForm.jTableReceiver.columnModel.title2")); // NOI18N
+            jTableReceiver.getColumnModel().getColumn(3).setHeaderValue(bundle.getString("MainForm.jTableReceiver.columnModel.title3")); // NOI18N
         }
 
         jButtonAutoMessage.setText(bundle.getString("MainForm.jButtonAutoMessage.text")); // NOI18N
@@ -733,12 +785,12 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                     .add(jLabel9)
                     .add(jScrollPane10, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 429, Short.MAX_VALUE)
                     .add(jLabelSendMsgCount, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
-                .addContainerGap(25, Short.MAX_VALUE))
+                .addContainerGap(251, Short.MAX_VALUE))
         );
         TabAutoMessageLayout.setVerticalGroup(
             TabAutoMessageLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
             .add(org.jdesktop.layout.GroupLayout.TRAILING, TabAutoMessageLayout.createSequentialGroup()
-                .addContainerGap(59, Short.MAX_VALUE)
+                .addContainerGap(71, Short.MAX_VALUE)
                 .add(TabAutoMessageLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
                     .add(TabAutoMessageLayout.createSequentialGroup()
                         .add(jLabel9)
@@ -753,13 +805,278 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                         .add(61, 61, 61)))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
                 .add(jLabelSendMsgCount)
-                .addContainerGap(37, Short.MAX_VALUE))
+                .addContainerGap(49, Short.MAX_VALUE))
         );
 
         MainTab.addTab(bundle.getString("MainForm.TabAutoMessage.TabConstraints.tabTitle"), TabAutoMessage); // NOI18N
 
-        jPanel7.setBackground(new java.awt.Color(255, 255, 255));
-        jPanel7.setName("jPanel7"); // NOI18N
+        TabChamSocTaiKhoan.setName("TabChamSocTaiKhoan"); // NOI18N
+
+        TabThamGiaNhom.setName("TabThamGiaNhom"); // NOI18N
+
+        jLabel3.setText(bundle.getString("MainForm.jLabel3.text")); // NOI18N
+        jLabel3.setName("jLabel3"); // NOI18N
+
+        jSearchGroup.setText(bundle.getString("MainForm.jSearchGroup.text")); // NOI18N
+        jSearchGroup.setName("jSearchGroup"); // NOI18N
+
+        jLabel4.setText(bundle.getString("MainForm.jLabel4.text")); // NOI18N
+        jLabel4.setName("jLabel4"); // NOI18N
+
+        jMembersLimit.setName("jMembersLimit"); // NOI18N
+        jMembersLimit.setValue(2000);
+
+        jButton1.setText(bundle.getString("MainForm.jButton1.text")); // NOI18N
+        jButton1.setName("jButton1"); // NOI18N
+        jButton1.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton1ActionPerformed(evt);
+            }
+        });
+
+        jScrollPane1.setName("jScrollPane1"); // NOI18N
+
+        jTableGroupSearch.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "STT", "Chọn", "Tên nhóm", "Số thành viên"
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.Object.class, java.lang.Boolean.class, java.lang.Object.class, java.lang.Object.class
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+        });
+        jTableGroupSearch.setName("jTableGroupSearch"); // NOI18N
+        jScrollPane1.setViewportView(jTableGroupSearch);
+        if (jTableGroupSearch.getColumnModel().getColumnCount() > 0) {
+            jTableGroupSearch.getColumnModel().getColumn(0).setHeaderValue(bundle.getString("MainForm.jTableGroupSearch.columnModel.title0")); // NOI18N
+            jTableGroupSearch.getColumnModel().getColumn(1).setHeaderValue(bundle.getString("MainForm.jTableGroupSearch.columnModel.title3_1")); // NOI18N
+            jTableGroupSearch.getColumnModel().getColumn(2).setHeaderValue(bundle.getString("MainForm.jTableGroupSearch.columnModel.title1")); // NOI18N
+            jTableGroupSearch.getColumnModel().getColumn(3).setHeaderValue(bundle.getString("MainForm.jTableGroupSearch.columnModel.title2")); // NOI18N
+        }
+
+        jSearchGroupStatus.setText(bundle.getString("MainForm.jSearchGroupStatus.text")); // NOI18N
+        jSearchGroupStatus.setName("jSearchGroupStatus"); // NOI18N
+
+        jButton2.setText(bundle.getString("MainForm.jButton2.text")); // NOI18N
+        jButton2.setName("jButton2"); // NOI18N
+        jButton2.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton2ActionPerformed(evt);
+            }
+        });
+
+        jScrollPane2.setName("jScrollPane2"); // NOI18N
+
+        jSearchGroupLog.setColumns(20);
+        jSearchGroupLog.setRows(5);
+        jSearchGroupLog.setName("jSearchGroupLog"); // NOI18N
+        jScrollPane2.setViewportView(jSearchGroupLog);
+
+        org.jdesktop.layout.GroupLayout TabThamGiaNhomLayout = new org.jdesktop.layout.GroupLayout(TabThamGiaNhom);
+        TabThamGiaNhom.setLayout(TabThamGiaNhomLayout);
+        TabThamGiaNhomLayout.setHorizontalGroup(
+            TabThamGiaNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(TabThamGiaNhomLayout.createSequentialGroup()
+                .addContainerGap()
+                .add(TabThamGiaNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(TabThamGiaNhomLayout.createSequentialGroup()
+                        .add(jLabel4)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(jMembersLimit, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 100, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .add(133, 133, 133)
+                        .add(jButton1, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 142, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, 483, Short.MAX_VALUE)
+                        .add(jButton2))
+                    .add(TabThamGiaNhomLayout.createSequentialGroup()
+                        .add(TabThamGiaNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                            .add(TabThamGiaNhomLayout.createSequentialGroup()
+                                .add(jLabel3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 81, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                                .add(jSearchGroup, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 412, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                            .add(jScrollPane1)
+                            .add(jSearchGroupStatus, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(jScrollPane2)))
+                .addContainerGap())
+        );
+        TabThamGiaNhomLayout.setVerticalGroup(
+            TabThamGiaNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(TabThamGiaNhomLayout.createSequentialGroup()
+                .add(9, 9, 9)
+                .add(TabThamGiaNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                    .add(jSearchGroup, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jLabel3))
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .add(TabThamGiaNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(jLabel4)
+                    .add(jMembersLimit, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                    .add(jButton1)
+                    .add(jButton2))
+                .add(18, 18, 18)
+                .add(jSearchGroupStatus)
+                .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                .add(TabThamGiaNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                    .add(jScrollPane2)
+                    .add(jScrollPane1, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 311, Short.MAX_VALUE))
+                .add(35, 35, 35))
+        );
+
+        TabChamSocTaiKhoan.addTab(bundle.getString("MainForm.TabThamGiaNhom.TabConstraints.tabTitle"), TabThamGiaNhom); // NOI18N
+
+        TabTuongTacNhom.setName("TabTuongTacNhom"); // NOI18N
+
+        jButton3.setText(bundle.getString("MainForm.jButton3.text")); // NOI18N
+        jButton3.setName("jButton3"); // NOI18N
+        jButton3.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton3ActionPerformed(evt);
+            }
+        });
+
+        jScrollPane3.setName("jScrollPane3"); // NOI18N
+
+        jTableMyGroups.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "STT", "Chọn", "Tên nhóm"
+            }
+        ) {
+            Class[] types = new Class [] {
+                java.lang.Object.class, java.lang.Boolean.class, java.lang.Object.class
+            };
+            boolean[] canEdit = new boolean [] {
+                false, true, false
+            };
+
+            public Class getColumnClass(int columnIndex) {
+                return types [columnIndex];
+            }
+
+            public boolean isCellEditable(int rowIndex, int columnIndex) {
+                return canEdit [columnIndex];
+            }
+        });
+        jTableMyGroups.setName("jTableMyGroups"); // NOI18N
+        jScrollPane3.setViewportView(jTableMyGroups);
+        if (jTableMyGroups.getColumnModel().getColumnCount() > 0) {
+            jTableMyGroups.getColumnModel().getColumn(0).setHeaderValue(bundle.getString("MainForm.jTableMyGroups.columnModel.title0")); // NOI18N
+            jTableMyGroups.getColumnModel().getColumn(1).setHeaderValue(bundle.getString("MainForm.jTableMyGroups.columnModel.title1")); // NOI18N
+            jTableMyGroups.getColumnModel().getColumn(2).setHeaderValue(bundle.getString("MainForm.jTableMyGroups.columnModel.title2")); // NOI18N
+        }
+
+        jButton4.setText(bundle.getString("MainForm.jButton4.text")); // NOI18N
+        jButton4.setName("jButton4"); // NOI18N
+        jButton4.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton4ActionPerformed(evt);
+            }
+        });
+
+        jPanel4.setBorder(javax.swing.BorderFactory.createTitledBorder(bundle.getString("MainForm.jPanel4.border.title"))); // NOI18N
+        jPanel4.setName("jPanel4"); // NOI18N
+
+        jScrollPane5.setName("jScrollPane5"); // NOI18N
+
+        jCommentTemplate.setColumns(20);
+        jCommentTemplate.setRows(5);
+        jCommentTemplate.setName("jCommentTemplate"); // NOI18N
+        jScrollPane5.setViewportView(jCommentTemplate);
+
+        org.jdesktop.layout.GroupLayout jPanel4Layout = new org.jdesktop.layout.GroupLayout(jPanel4);
+        jPanel4.setLayout(jPanel4Layout);
+        jPanel4Layout.setHorizontalGroup(
+            jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jScrollPane5)
+                .addContainerGap())
+        );
+        jPanel4Layout.setVerticalGroup(
+            jPanel4Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel4Layout.createSequentialGroup()
+                .addContainerGap()
+                .add(jScrollPane5, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 118, Short.MAX_VALUE)
+                .addContainerGap())
+        );
+
+        jButton5.setText(bundle.getString("MainForm.jButtonCommentLike.text")); // NOI18N
+        jButton5.setName("jButtonCommentLike"); // NOI18N
+        jButton5.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jButton5ActionPerformed(evt);
+            }
+        });
+
+        jScrollPane4.setName("jScrollPane4"); // NOI18N
+
+        jLogTuongTacNhom.setColumns(20);
+        jLogTuongTacNhom.setRows(5);
+        jLogTuongTacNhom.setName("jLogTuongTacNhom"); // NOI18N
+        jScrollPane4.setViewportView(jLogTuongTacNhom);
+
+        jLikeCommentStatus.setText(bundle.getString("MainForm.jLikeCommentStatus.text")); // NOI18N
+        jLikeCommentStatus.setName("jLikeCommentStatus"); // NOI18N
+
+        org.jdesktop.layout.GroupLayout TabTuongTacNhomLayout = new org.jdesktop.layout.GroupLayout(TabTuongTacNhom);
+        TabTuongTacNhom.setLayout(TabTuongTacNhomLayout);
+        TabTuongTacNhomLayout.setHorizontalGroup(
+            TabTuongTacNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(TabTuongTacNhomLayout.createSequentialGroup()
+                .add(TabTuongTacNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                    .add(jButton4)
+                    .add(TabTuongTacNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING, false)
+                        .add(TabTuongTacNhomLayout.createSequentialGroup()
+                            .addContainerGap()
+                            .add(jScrollPane3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 0, Short.MAX_VALUE))
+                        .add(jButton3)))
+                .add(18, 18, 18)
+                .add(TabTuongTacNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(jScrollPane4, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, 584, Short.MAX_VALUE)
+                    .add(TabTuongTacNhomLayout.createSequentialGroup()
+                        .add(jButton5)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .add(jLikeCommentStatus, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 265, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel4, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
+        );
+        TabTuongTacNhomLayout.setVerticalGroup(
+            TabTuongTacNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(TabTuongTacNhomLayout.createSequentialGroup()
+                .addContainerGap()
+                .add(TabTuongTacNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.TRAILING)
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, TabTuongTacNhomLayout.createSequentialGroup()
+                        .add(jPanel4, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .add(18, 18, 18)
+                        .add(TabTuongTacNhomLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                            .add(jButton5)
+                            .add(jLikeCommentStatus, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 19, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(jScrollPane4))
+                    .add(org.jdesktop.layout.GroupLayout.LEADING, TabTuongTacNhomLayout.createSequentialGroup()
+                        .add(jButton3)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(jScrollPane3, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 303, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
+                        .add(jButton4)
+                        .add(0, 34, Short.MAX_VALUE)))
+                .addContainerGap())
+        );
+
+        TabChamSocTaiKhoan.addTab(bundle.getString("MainForm.TabTuongTacNhom.TabConstraints.tabTitle"), TabTuongTacNhom); // NOI18N
+
+        MainTab.addTab(bundle.getString("MainForm.TabChamSocTaiKhoan.TabConstraints.tabTitle"), TabChamSocTaiKhoan); // NOI18N
+
+        TabContact.setBackground(new java.awt.Color(255, 255, 255));
+        TabContact.setName("TabContact"); // NOI18N
 
         jLabel11.setText(bundle.getString("MainForm.jLabel11.text")); // NOI18N
         jLabel11.setName("jLabel11"); // NOI18N
@@ -811,62 +1128,62 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         jLabel20.setText(bundle.getString("MainForm.jLabel20.text")); // NOI18N
         jLabel20.setName("jLabel20"); // NOI18N
 
-        org.jdesktop.layout.GroupLayout jPanel7Layout = new org.jdesktop.layout.GroupLayout(jPanel7);
-        jPanel7.setLayout(jPanel7Layout);
-        jPanel7Layout.setHorizontalGroup(
-            jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jPanel7Layout.createSequentialGroup()
+        org.jdesktop.layout.GroupLayout TabContactLayout = new org.jdesktop.layout.GroupLayout(TabContact);
+        TabContact.setLayout(TabContactLayout);
+        TabContactLayout.setHorizontalGroup(
+            TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(TabContactLayout.createSequentialGroup()
                 .add(263, 263, 263)
-                .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel7Layout.createSequentialGroup()
-                        .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, TabContactLayout.createSequentialGroup()
+                        .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
                             .add(jLabel16, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .add(jLabel18, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                         .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                        .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                        .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                             .add(jLabel17, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .add(jPanel7Layout.createSequentialGroup()
+                            .add(TabContactLayout.createSequentialGroup()
                                 .add(jLabel19, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 212, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                                 .add(40, 40, 40)
                                 .add(jLabel20, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 160, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))))
                     .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel13, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 350, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(org.jdesktop.layout.GroupLayout.TRAILING, jPanel7Layout.createSequentialGroup()
-                        .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                    .add(org.jdesktop.layout.GroupLayout.TRAILING, TabContactLayout.createSequentialGroup()
+                        .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                             .add(jLabel11, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 43, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
                             .add(jLabel14, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 43, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))
                         .add(18, 18, 18)
-                        .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
+                        .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING, false)
                             .add(jLabel15, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                             .add(jLabel12, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 412, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE))))
-                .addContainerGap(207, Short.MAX_VALUE))
+                .addContainerGap(433, Short.MAX_VALUE))
         );
-        jPanel7Layout.setVerticalGroup(
-            jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
-            .add(jPanel7Layout.createSequentialGroup()
+        TabContactLayout.setVerticalGroup(
+            TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+            .add(TabContactLayout.createSequentialGroup()
                 .add(16, 16, 16)
                 .add(jLabel13)
                 .add(18, 18, 18)
-                .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel14)
                     .add(jLabel15))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel11)
                     .add(jLabel12))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                     .add(jLabel16)
                     .add(jLabel17))
                 .addPreferredGap(org.jdesktop.layout.LayoutStyle.RELATED)
-                .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
+                .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.LEADING)
                     .add(org.jdesktop.layout.GroupLayout.TRAILING, jLabel20, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, 75, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)
-                    .add(jPanel7Layout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
+                    .add(TabContactLayout.createParallelGroup(org.jdesktop.layout.GroupLayout.BASELINE)
                         .add(jLabel18)
                         .add(jLabel19, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE, org.jdesktop.layout.GroupLayout.DEFAULT_SIZE, org.jdesktop.layout.GroupLayout.PREFERRED_SIZE)))
-                .addContainerGap(197, Short.MAX_VALUE))
+                .addContainerGap(221, Short.MAX_VALUE))
         );
 
-        MainTab.addTab("Contact", jPanel7);
+        MainTab.addTab(bundle.getString("MainForm.TabContact.TabConstraints.tabTitle"), TabContact); // NOI18N
 
         jPanel2.setBackground(new java.awt.Color(0, 194, 185));
         jPanel2.setName("jPanel2"); // NOI18N
@@ -977,6 +1294,8 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
             } catch (IOException ex) {
                 //jLogging.append(LoggingUtils.print("Loi trong qua trinh dang nhap: " + ex.getMessage()));
                 MessageBox.Show(this, "Lỗi trong quá trình đăng nhập", "BOTVN", MessageBox.Buttons.OK);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(MainForm.class.getName()).log(Level.SEVERE, null, ex);
             }
         } else {
             //jLogging.append(LoggingUtils.print("LOGOUT"));
@@ -1011,7 +1330,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
             MessageBox.Show(this, "Tùy chọn tìm kiếm chưa được chọn", "BOTVN", MessageBox.Buttons.OK);
         } else {
             jTimKiemStatus.setText("Đang tiến hành tìm kiếm...");
-            clearSearchResults();
+            clearSearchResults(jTableResultSearch);
             mMainFormController.Search(new SearchAll(), keyword, type);
         }
     }//GEN-LAST:event_jButtonTimKiemActionPerformed
@@ -1050,7 +1369,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
             BotSearchObject fanpage = mResultsSearch.get(selectedIndex);
             Desktop d = Desktop.getDesktop();
             try {
-                d.browse(new URI(BotUrlFormatter.getProfileUserUrl(fanpage.ID)));
+                d.browse(new URI(BotUrlFormatter.getShortProfileUrl(fanpage.ID)));
             } catch (IOException | URISyntaxException ex) {
                 Logger.getLogger(MainForm.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -1067,7 +1386,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
             // Display new message into table
             DefaultTableModel model = (DefaultTableModel) jTableMessageTemplate.getModel();
             int latestRow = model.getRowCount();
-            model.addRow(new Object[]{ ++latestRow, true, result});
+            model.addRow(new Object[]{++latestRow, true, result});
             resizeColumnWidth(jTableMessageTemplate);
             if (!jDelMessage.isEnabled()) {
                 jDelMessage.setEnabled(true);
@@ -1087,7 +1406,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                 jDelMessage.setEnabled(false);
             }
             // update number order
-            for(int i = 1; i <= model.getRowCount(); i++){
+            for (int i = 1; i <= model.getRowCount(); i++) {
                 model.setValueAt(i, i - 1, Tables.MESSAGE_TEMP.NO);
             }
         } else {
@@ -1100,7 +1419,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         if (selectedIndex != -1) {
             DefaultTableModel model = (DefaultTableModel) jTableMessageTemplate.getModel();
             BotMessageObject r = (BotMessageObject) model.getValueAt(selectedIndex, Tables.MESSAGE_TEMP.CONTENT);
-            FormAddMessage addMessage = new FormAddMessage(this, true,mCurrentLanguage, r);
+            FormAddMessage addMessage = new FormAddMessage(this, true, mCurrentLanguage, r);
             addMessage.setVisible(true);
             BotMessageObject result = addMessage.getValue();
             if (result != null && result.toString().length() > 0) {
@@ -1117,6 +1436,10 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         if (mResultsSearch == null || mResultsSearch.isEmpty()) {
             MessageBox.Show(this, "Bạn phải tìm kiếm trước khi thực hiện chức năng này", "BOTVN", MessageBox.Buttons.OK);
             return;
+        }
+
+        if (mMessages != null && mMessages.size() < 5) {
+            MessageBox.Show(this, "Bạn phải thêm ít nhất 5 tin nhắn để gởi", "BOTVN", MessageBox.Buttons.OK);
         }
 
         /*
@@ -1140,8 +1463,8 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
             MessageBox.Show(this, "Bạn phải tìm kiếm trước khi thực hiện chức năng này", "BOTVN", MessageBox.Buttons.OK);
             return;
         }
-        
-        if(!mMainFormController.CheckIsResutlsSelected(mResultsSearch)){
+
+        if (!mMainFormController.CheckIsResutlsSelected(mResultsSearch)) {
             MessageBox.Show(this, "Chưa chọn kết quả tìm kiếm nào để tiến hành", "BOTVN", MessageBox.Buttons.OK);
             return;
         }
@@ -1167,6 +1490,46 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
 
         //OpenBrowser.openWebpage("http://" + jLabel17.getText());
     }//GEN-LAST:event_jLabel17MouseClicked
+
+    private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
+        String keyword = jSearchGroup.getText();
+        if (keyword.length() == 0) {
+            MessageBox.Show(this, "Vui lòng nhập từ khóa!", "BOTVN", MessageBox.Buttons.OK);
+            return;
+        }
+
+        clearSearchResults(jTableGroupSearch);
+        int limit = Integer.parseInt(jMembersLimit.getValue().toString());
+        jSearchGroupStatus.setText("Đang tìm kiếm nhóm...");
+        mMainFormController.SearchGroup(new SearchGroup(), keyword, limit);
+    }//GEN-LAST:event_jButton1ActionPerformed
+
+    private void jButton2ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton2ActionPerformed
+        mMainFormController.JoinGroup(new SearchGroupLog());
+    }//GEN-LAST:event_jButton2ActionPerformed
+
+    private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        clearSearchResults(jTableMyGroups);
+        mMainFormController.FetchMyGroup(new FetchMyGroupListener());
+    }//GEN-LAST:event_jButton3ActionPerformed
+
+    private void jButton4ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton4ActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jButton4ActionPerformed
+
+    private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton5ActionPerformed
+        String comments = jCommentTemplate.getText();
+        if (comments.length() == 0) {
+            MessageBox.Show(this, "Bạn chưa nhập nội dung bình luận", "BOTVN", MessageBox.Buttons.OK);
+            return;
+        }
+        if(mMyGroups.isEmpty()){
+            MessageBox.Show(this, "Bạn chưa nằm trong nhóm nào", "BOTVN", MessageBox.Buttons.OK);
+            return;
+        }
+        jLikeCommentStatus.setText("Đang tiến hành...");
+        mMainFormController.groupLikePost(mMyGroups, comments, new OnPostComment());
+    }//GEN-LAST:event_jButton5ActionPerformed
 
     /**
      * @param args the command line arguments
@@ -1207,15 +1570,25 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
     private javax.swing.JTabbedPane MainTab;
     private javax.swing.JPanel TabAutoLike;
     private javax.swing.JPanel TabAutoMessage;
+    private javax.swing.JTabbedPane TabChamSocTaiKhoan;
+    private javax.swing.JPanel TabContact;
     private javax.swing.JPanel TabLogin;
+    private javax.swing.JPanel TabThamGiaNhom;
     private javax.swing.JPanel TabTimKiem;
+    private javax.swing.JPanel TabTuongTacNhom;
     private javax.swing.ButtonGroup buttonGroup1;
     private javax.swing.ButtonGroup buttonGroup2;
     private javax.swing.JButton jAddMessage;
+    private javax.swing.JButton jButton1;
+    private javax.swing.JButton jButton2;
+    private javax.swing.JButton jButton3;
+    private javax.swing.JButton jButton4;
+    private javax.swing.JButton jButton5;
     private javax.swing.JButton jButtonAutoMessage;
     private javax.swing.JButton jButtonLikeFanPage;
     private javax.swing.JButton jButtonTimKiem;
     private javax.swing.JCheckBox jCheckBox3;
+    private javax.swing.JTextArea jCommentTemplate;
     private javax.swing.JButton jDangNhapButton;
     private javax.swing.JButton jDelMessage;
     private javax.swing.JTextField jEmail;
@@ -1234,6 +1607,8 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
     private javax.swing.JLabel jLabel19;
     private javax.swing.JLabel jLabel2;
     private javax.swing.JLabel jLabel20;
+    private javax.swing.JLabel jLabel3;
+    private javax.swing.JLabel jLabel4;
     private javax.swing.JLabel jLabel8;
     private javax.swing.JLabel jLabel9;
     private javax.swing.JLabel jLabelCountSelected;
@@ -1243,14 +1618,22 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
     private javax.swing.JLabel jLabelSendMsgCount;
     private javax.swing.JRadioButton jLanguageEnglish;
     private javax.swing.JRadioButton jLanguageVietnamese;
+    private javax.swing.JLabel jLikeCommentStatus;
+    private javax.swing.JTextArea jLogTuongTacNhom;
+    private javax.swing.JSpinner jMembersLimit;
     private javax.swing.JButton jOpenFBPage;
     private javax.swing.JPanel jPanel1;
     private javax.swing.JPanel jPanel10;
     private javax.swing.JPanel jPanel2;
-    private javax.swing.JPanel jPanel7;
+    private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanelLogin;
     private javax.swing.JPasswordField jPassword;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane10;
+    private javax.swing.JScrollPane jScrollPane2;
+    private javax.swing.JScrollPane jScrollPane3;
+    private javax.swing.JScrollPane jScrollPane4;
+    private javax.swing.JScrollPane jScrollPane5;
     private javax.swing.JScrollPane jScrollPane7;
     private javax.swing.JScrollPane jScrollPane8;
     private javax.swing.JScrollPane jScrollPane9;
@@ -1258,9 +1641,14 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
     private javax.swing.JCheckBox jSearchByFanPage;
     private javax.swing.JCheckBox jSearchByGroup;
     private javax.swing.JCheckBox jSearchByUser;
+    private javax.swing.JTextField jSearchGroup;
+    private javax.swing.JTextArea jSearchGroupLog;
+    private javax.swing.JLabel jSearchGroupStatus;
     private javax.swing.JButton jSelectAll;
+    private javax.swing.JTable jTableGroupSearch;
     private javax.swing.JTable jTableLike;
     private javax.swing.JTable jTableMessageTemplate;
+    private javax.swing.JTable jTableMyGroups;
     private javax.swing.JTable jTableReceiver;
     private javax.swing.JTable jTableResultSearch;
     private javax.swing.JLabel jTimKiemStatus;
@@ -1300,7 +1688,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
 
     @Override
     public void OnInitSuccess() {
-        if(mSplashScreen != null){
+        if (mSplashScreen != null) {
             mSplashScreen.Dispose();
         }
         if (LoggingUtils.DEBUG) {
@@ -1330,16 +1718,46 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
     }
 
     /**
+     *
+     */
+    private class SearchGroup implements BotEventListener<BotGroupObject> {
+
+        private int count = 1;
+
+        @Override
+        public void OnReceiving(BotGroupObject object) {
+            DefaultTableModel model = (DefaultTableModel) jTableGroupSearch.getModel();
+            model.addRow(new Object[]{count++, object.IsSelected, object, object.Members});
+        }
+
+        @Override
+        public void OnReceveFinished(List<BotGroupObject> results) {
+            mResultsGroups = results;
+            jSearchGroupStatus.setText(String.format("Hoàn thành, có %d nhóm", mResultsGroups.size()));
+            resizeColumnWidth(jTableGroupSearch);
+        }
+    }
+
+    private class SearchGroupLog implements LoggingListener {
+
+        @Override
+        public void OnLog(String log) {
+            jSearchGroupLog.append(log);
+        }
+
+    }
+
+    /**
      * Received result from search
      */
     private class SearchAll implements BotEventListener<BotSearchObject> {
 
         private int count = 1;
-        
+
         @Override
         public void OnReceiving(BotSearchObject object) {
             DefaultTableModel model = (DefaultTableModel) jTableResultSearch.getModel();
-            model.addRow(new Object[]{ count++, object.IsSelected, object, object.Type});
+            model.addRow(new Object[]{count++, object.IsSelected, object, object.Type});
         }
 
         @Override
@@ -1359,7 +1777,7 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
                 jInvertSelection.setEnabled(false);
                 jOpenFBPage.setEnabled(false);
             }
-            
+
             // Select all as default
             DefaultTableModel model = (DefaultTableModel) jTableResultSearch.getModel();
             for (int i = 0; i < model.getRowCount(); i++) {
@@ -1378,11 +1796,12 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
     private class SendMessageListener implements BotMessageAdsListener {
 
         private int count = 0;
+
         @Override
         public void OnMessageProcessing(String receiver) {
             DefaultTableModel model = (DefaultTableModel) jTableReceiver.getModel();
             model.addRow(new Object[]{++count, receiver, "Đang xử lý..."});
-            
+
             jLabelSendMsgCount.setText(String.format("Đã gởi tin nhắn %s/%s", count, mMainFormController.countSelected(mResultsSearch)));
         }
 
@@ -1390,6 +1809,11 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         public void OnMessageSend(boolean isSuccess, String received) {
             DefaultTableModel model = (DefaultTableModel) jTableReceiver.getModel();
             int latestRow = model.getRowCount() - 1;
+            int h = Calendar.getInstance(Locale.getDefault()).get(Calendar.HOUR_OF_DAY);
+            int m = Calendar.getInstance(Locale.getDefault()).get(Calendar.MINUTE);
+            int s = Calendar.getInstance(Locale.getDefault()).get(Calendar.SECOND);
+            String dt = String.format("%d:%d:%d", h, m, s);
+            model.setValueAt(dt, latestRow, Tables.MESSAGE_SENT.TIME);
             if (isSuccess) {
                 model.setValueAt("Đã gởi tin nhắn", latestRow, Tables.MESSAGE_SENT.STATUS);
             } else {
@@ -1410,12 +1834,12 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
     private class LikeListener implements BotLikeListener {
 
         private int count = 0;
-        
+
         @Override
         public void OnLikeProcessing(String name) {
             DefaultTableModel model = (DefaultTableModel) jTableLike.getModel();
             model.addRow(new Object[]{++count, name, "Đang xử lý..."});
-            
+
             jLabelLikeCount.setText(String.format("Đã like %s/%s", count, mMainFormController.countSelected(mResultsSearch)));
         }
 
@@ -1434,6 +1858,49 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         @Override
         public void OnLikeFinished() {
             jLabelLikeStatus.setText("Đã like xong");
+        }
+    }
+
+    /**
+     *
+     */
+    private class FetchMyGroupListener implements OnFetchMyGroupsListener {
+
+        private int count = 0;
+
+        @Override
+        public void OnFetchGroup(BotGroupObject obj) {
+            LoggingUtils.print("href:" + obj.URL + ",name: " + obj.Name);
+            DefaultTableModel model = (DefaultTableModel) jTableMyGroups.getModel();
+            model.addRow(new Object[]{++count, obj.IsSelected, obj});
+        }
+
+        @Override
+        public void OnFetchGroupError() {
+            LoggingUtils.print("ERROR----------");
+        }
+
+        @Override
+        public void OnFetchFinished(List<BotGroupObject> list) {
+            resizeColumnWidth(jTableMyGroups);
+            if(mMyGroups == null){
+                mMyGroups = new ArrayList<>();
+            }
+            mMyGroups.addAll(list);
+        }
+
+    }
+
+    private class OnPostComment implements IPostCommentListener {
+
+        @Override
+        public void OnComment(String post_url) {
+            jLogTuongTacNhom.append("\n- " + post_url);
+        }
+
+        @Override
+        public void OnFinished() {
+            jLikeCommentStatus.setText("Hoàn thành");
         }
     }
 
@@ -1474,24 +1941,24 @@ public class MainForm extends javax.swing.JFrame implements BotConfigListener {
         jButtonLikeFanPage.setText(bundle.getString("MainForm.jButtonLikeFanPage.text"));
         jCheckBox3.setText(bundle.getString("MainForm.jCheckBox3.text"));
         jLanguageVietnamese.setText(bundle.getString("MainForm.jLanguageVietnamese.text"));
-        
+
         jTableMessageTemplate.getColumnModel().getColumn(Tables.MESSAGE_TEMP.NO).setHeaderValue(bundle.getString("MainForm.columnModel.title_no"));
         jTableMessageTemplate.getColumnModel().getColumn(Tables.MESSAGE_TEMP.SELECTION).setHeaderValue(bundle.getString("MainForm.jTableMessageTemplate.columnModel.title_1"));
         jTableMessageTemplate.getColumnModel().getColumn(Tables.MESSAGE_TEMP.CONTENT).setHeaderValue(bundle.getString("MainForm.jTableMessageTemplate.columnModel.title_2"));
-        
+
         jTableReceiver.getColumnModel().getColumn(Tables.MESSAGE_SENT.NO).setHeaderValue(bundle.getString("MainForm.columnModel.title_no"));
         jTableReceiver.getColumnModel().getColumn(Tables.MESSAGE_SENT.NAME).setHeaderValue(bundle.getString("MainForm.jTableReceiver.columnModel.title_1"));
         jTableReceiver.getColumnModel().getColumn(Tables.MESSAGE_SENT.STATUS).setHeaderValue(bundle.getString("MainForm.jTableReceiver.columnModel.title_2"));
-        
+
         jTableLike.getColumnModel().getColumn(Tables.AUTOLIKE.NO).setHeaderValue(bundle.getString("MainForm.columnModel.title_no"));
         jTableLike.getColumnModel().getColumn(Tables.AUTOLIKE.NAME).setHeaderValue(bundle.getString("MainForm.jTableLike.columnModel.title_1"));
         jTableLike.getColumnModel().getColumn(Tables.AUTOLIKE.STATUS).setHeaderValue(bundle.getString("MainForm.jTableLike.columnModel.title_2"));
     }
-    
+
     /**
      * Count all selected
      */
-    private void updateSelection(){
+    private void updateSelection() {
         String countMsg = String.format("Đã chọn: %d", mMainFormController.countSelected(mResultsSearch));
         jLabelCountSelected.setText(countMsg);
     }

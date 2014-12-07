@@ -76,7 +76,7 @@ public class BotFanPage extends BotBase implements Runnable {
      */
     private void fetchFanPage(String url) {
         try {
-            Response res = HttpUtil.getLocal(url, mCks);
+            Response res = HttpUtil.getLocal(url, mLoginCookies, false);
             if (res.getHtml() != null) {
                 JSONParser jsonParser = new JSONParser();
                 JSONObject jsonPage = (JSONObject) jsonParser.parse(res.getHtml());
@@ -117,9 +117,7 @@ public class BotFanPage extends BotBase implements Runnable {
                     }
                 }
             }
-        } catch (IOException ex) {
-            Logger.getLogger(BotFanPage.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (ParseException ex) {
+        } catch (IOException | ParseException | InterruptedException ex) {
             Logger.getLogger(BotFanPage.class.getName()).log(Level.SEVERE, null, ex);
         }
     }

@@ -60,8 +60,28 @@ public class BotUrlFormatter {
      * @param id
      * @return 
      */
-    public static String getProfileUrl(String id){
-        String url = String.format(BotConfig.URLHome, id);
+    public static String getProfileMobileUrl(String id){
+        String url = String.format(BotConfig.URLProfile, id);
+        return escape(url);
+    }
+    
+    public static String getShortProfileUrl(String id){
+        String url = String.format("%s%s", BotConfig.URLHome, id);
+        return escape(url);
+    }
+    
+    public static String getShortProfileUrlMobile(String id){
+        String url = String.format("%s%s", BotConfig.URLHomeMobile, id);
+        return escape(url);
+    }
+    
+    /**
+     * 
+     * @param id
+     * @return
+     */
+    public static String getGroupPage(String id){
+        String url = String.format(BotConfig.URLGroupProfile, id);
         return escape(url);
     }
     
@@ -70,8 +90,16 @@ public class BotUrlFormatter {
      * @param id
      * @return 
      */
-    public static String getProfileUserUrl(String id){
-        String url = String.format("%s%s", BotConfig.URLHome, id);
+    public static String getUrlFormComposer(String id){
+        String url = String.format(BotConfig.URLComposerForm, id, 17);
+        return escape(url);
+    }
+    
+    /**
+     * 
+     */
+    public static String getUrlReadMessaage(String id){
+        String url = String.format(BotConfig.URLReadSendMessage, id);
         return escape(url);
     }
 }

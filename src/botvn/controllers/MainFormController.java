@@ -1,13 +1,19 @@
 package botvn.controllers;
 
+import botvn.HttpUtil;
+import botvn.JerryUtil;
+import botvn.Response;
 import botvn.botconfig.BotConfigListener;
+import botvn.botconfig.BotConfigLocal;
 import botvn.botconfig.BotConfigRequest;
 import botvn.botconfig.BotMessageObject;
 import botvn.botconfig.BotMessageTemplate;
+import botvn.botconfig.BotUrlFormatter;
 import botvn.libraries.BotEventListener;
 import botvn.libraries.message.BotMessageAds;
 import botvn.libraries.search.fanpage.BotFanPage;
 import botvn.libraries.BotUtils;
+import botvn.libraries.LoggingListener;
 import botvn.libraries.LoggingUtils;
 import botvn.libraries.LoginInfo;
 import botvn.libraries.MessageBox;
@@ -16,10 +22,26 @@ import botvn.libraries.like.BotLikeListener;
 import botvn.libraries.message.BotMessageAdsListener;
 import botvn.libraries.search.BotSearch;
 import botvn.libraries.search.BotSearchObject;
+import botvn.libraries.search.group.BotGroup;
+import botvn.libraries.search.group.BotGroupObject;
+import botvn.libraries.search.group.IPostCommentListener;
+import botvn.libraries.search.group.OnFetchMyGroupsListener;
 import java.awt.Component;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JOptionPane;
+import jodd.http.HttpRequest;
+import jodd.http.HttpResponse;
+import jodd.jerry.Jerry;
+import jodd.jerry.JerryFunction;
+import jodd.upload.FileUpload;
+import jodd.upload.MultipartRequestInputStream;
 
 /**
  *
@@ -32,6 +54,11 @@ public class MainFormController extends BaseController implements BotConfigListe
      */
     private BotFanPage mBotFanPage;
 
+    /**
+     * 
+     */
+    private BotGroup mBotGroup;
+    
     /**
      *
      */
@@ -109,6 +136,45 @@ public class MainFormController extends BaseController implements BotConfigListe
             ((BotConfigListener) mParentView).OnInitError();
         }
     }
+    
+    public void SearchGroup(BotEventListener listener, String keyword, int limit){
+        if (IsConnected && IsLogged) {
+            mBotGroup = new BotGroup(listener);
+            mBotGroup.setCookieStore(mLoginCookies);
+            mBotGroup.setKeyword(keyword);
+            mBotGroup.setLimit(limit);
+            mBotGroup.start();
+        } else {
+            MessageBox.Show(mParentView, "Bạn chưa đăng nhập", "BOTVN", MessageBox.Buttons.OK);
+            ((BotConfigListener) mParentView).OnInitError();
+        }
+    }
+    
+    /**
+     * 
+     * @param listener 
+     */
+    public void JoinGroup(LoggingListener listener){
+        mBotGroup.setLog(listener);
+        mBotGroup.JoinGroup();
+    }
+    
+    /**
+     * 
+     * @param listener 
+     */
+    public void FetchMyGroup(OnFetchMyGroupsListener listener){
+        if (IsConnected && IsLogged) {
+            mBotGroup = new BotGroup(null);
+            mBotGroup.setCookieStore(mLoginCookies);
+            mBotGroup.setFetchMyGroupsEvent(listener);
+            mBotGroup.ListGroups();
+        } else {
+            MessageBox.Show(mParentView, "Bạn chưa đăng nhập", "BOTVN", MessageBox.Buttons.OK);
+            ((BotConfigListener) mParentView).OnInitError();
+        }
+        
+    }
 
     /**
      *
@@ -117,11 +183,13 @@ public class MainFormController extends BaseController implements BotConfigListe
      * @return true: login success, else false
      * @throws java.io.IOException
      */
-    public boolean Login(String email, String password) throws IOException {
+    public boolean Login(String email, String password) throws IOException, InterruptedException {
         mResponseUser = BotUtils.loginToFacebook(email, password);
-        IsLogged = mResponseUser.getCookies().size() >= 9;
+        IsLogged = mResponseUser.getCookies().size() >= 11;
         mLoginCookies = mResponseUser.getCookieStore(); // init first cookie store
-        mLoginInfo = getCurrentInfo();
+        mLoginInfo = new LoginInfo();
+        mLoginInfo.fbdtsg = getFBDTSG();
+        mLoginInfo.userId = getThisID();
         return IsLogged;
     }
 
@@ -264,10 +332,25 @@ public class MainFormController extends BaseController implements BotConfigListe
      * @return 
      */
     public int countSelected(List<BotSearchObject> results){
+        if(results == null) return -1;
         int count = 0;
         for(BotSearchObject obj : results){
             count += obj.IsSelected ? 1 : 0;
         }
         return count;
+    }
+    
+    /**
+     * 
+     * @param commentTemp
+     * @param listener
+     */
+    public void groupLikePost(final List<BotGroupObject> groups,final String commentTemp, final IPostCommentListener listener){
+        if(!(IsConnected && IsLogged)){
+            MessageBox.Show(mParentView, "Bạn chưa đăng nhập", "BOTVN", MessageBox.Buttons.OK);
+            ((BotConfigListener) mParentView).OnInitError();
+            return;
+        }
+        mBotGroup.LikeComment(groups, commentTemp, listener);
     }
 }

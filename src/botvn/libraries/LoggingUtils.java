@@ -11,7 +11,7 @@ public class LoggingUtils {
     /**
      * 
      */
-    public static boolean DEBUG = true;
+    public static boolean DEBUG = false;
     public static boolean XDEBUG = true;
     
     /**

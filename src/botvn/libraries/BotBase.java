@@ -28,6 +28,12 @@ import org.json.simple.parser.ParseException;
  */
 public abstract class BotBase {
 
+    public enum BotStatus {
+
+        SUCCESS,
+        ERROR
+    }
+
     /**
      *
      */
@@ -37,9 +43,9 @@ public abstract class BotBase {
      * Cookie store when logged
      */
     protected CookieStore mCks;
-    
+
     /**
-     * 
+     *
      */
     protected static CookieStore mLoginCookies;
 
@@ -59,15 +65,15 @@ public abstract class BotBase {
     protected List<BotSearchObject> mResults;
 
     /**
-     * 
+     *
      */
     protected BotEventListener<BotSearchObject> mBotSearchListener;
 
     /**
-     * 
+     *
      */
     protected String mCurrentUserID;
-    
+
     /**
      * Constructor
      */
@@ -95,10 +101,11 @@ public abstract class BotBase {
         // Always override newest cookies
         mLoginCookies = cks;
     }
-    
-    public void setCookieStore(CookieStore cks){
+
+    public void setCookieStore(CookieStore cks) {
         mCks = cks;
     }
+
     /**
      * Search by user, page, group or event
      *
@@ -115,7 +122,7 @@ public abstract class BotBase {
      */
     protected final void search(String url, BotSearchObjectType type) {
         try {
-            Response res = HttpUtil.getLocal(url, mCks);
+            Response res = HttpUtil.getLocal(url, mCks, false);
             if (res.getHtml() != null) {
                 JSONParser jsonParser = new JSONParser();
                 JSONObject jsonPage = (JSONObject) jsonParser.parse(res.getHtml());
@@ -159,16 +166,19 @@ public abstract class BotBase {
             }
         } catch (IOException | ParseException ex) {
             Logger.getLogger(BotFanPage.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(BotBase.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
     /**
      * Get current user id
-     * @return 
+     *
+     * @return
      */
-    public String getThisID(){
+    public String getThisID() {
         String userId = "";
-        List<Cookie> cks = mCks.getCookies();
+        List<Cookie> cks = mLoginCookies.getCookies();
         for (Cookie ck : cks) {
             if (ck.getName().equals("c_user")) {
                 String val = ck.getValue();
@@ -180,14 +190,14 @@ public abstract class BotBase {
         }
         return userId;
     }
-    
+
     /**
-     * 
-     * @return 
-     * @throws java.io.IOException 
+     *
+     * @return @throws java.io.IOException
+     * @throws java.lang.InterruptedException
      */
-    public LoginInfo getCurrentInfo() throws IOException {
-        Response response = HttpUtil.getLocal(BotConfig.URLFriends, mLoginCookies);
+    public LoginInfo getCurrentInfo() throws IOException, InterruptedException {
+        Response response = HttpUtil.getLocal(BotConfig.URLFriends, mLoginCookies, false);
         Jerry doc = Jerry.jerry(response.getHtml());
         // find user id
         Jerry userLink = doc.$("#facebook div#pagelet_bluebar ul li a img");
@@ -204,33 +214,83 @@ public abstract class BotBase {
         loginInfo.fbdtsg = fb_dtsg;
         return loginInfo;
     }
-    
+
     /**
-     * 
-     * @param results
-     * @return 
+     *
+     * @return @throws java.io.IOException
+     * @throws java.lang.InterruptedException
      */
-    protected String getJsonResponse(String results){
+    public String getFBDTSG() throws IOException, InterruptedException {
+        Response response = HttpUtil.getLocal(BotUrlFormatter.getShortProfileUrlMobile(getThisID()), mLoginCookies, false);
+        Jerry doc = Jerry.jerry(response.getHtml());
+        // find fb_dtsg
+        Jerry jerry = doc.$("input[name='fb_dtsg']");
+        final String fb_dtsg = jerry.attr("value");
+
+        return fb_dtsg;
+    }
+
+    /**
+     *
+     * @param results
+     * @return
+     */
+    protected String getJsonResponse(String results) {
         int begin = results.indexOf("{");
         String jsonRaw = results.substring(begin);
         return jsonRaw;
     }
-    
+
     /**
-     * 
-     * @param results 
-     * @return  
+     *
+     * @param results
+     * @return
      */
-    protected boolean isSuccess(String results){
+    protected boolean isSuccess(String results) {
         String jsonRaw = getJsonResponse(results);
         try {
             JSONObject jsonObj = (JSONObject) new JSONParser().parse(jsonRaw);
-            if(!(jsonObj.containsKey("error") && jsonObj.containsKey("errorSummary"))){
+            if (!(jsonObj.containsKey("error") && jsonObj.containsKey("errorSummary"))) {
                 return true;
             }
         } catch (ParseException ex) {
             Logger.getLogger(BotMessageAds.class.getName()).log(Level.SEVERE, null, ex);
         }
         return false;
+    }
+
+    /**
+     *
+     * @param htmlContent
+     * @return
+     */
+    protected boolean sendMessageSuccess(String htmlContent) {
+        Jerry doc = Jerry.jerry(htmlContent);
+        Jerry messageGroup = doc.$("div#root div#messageGroup");
+        return messageGroup.length() != 0;
+    }
+
+    /**
+     * 
+     * @param currentID
+     * @return
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws ParseException 
+     */
+    protected String getRealUserID(String currentID) throws IOException, InterruptedException, ParseException {
+        // Get real user ID
+        String url = BotUrlFormatter.getShortProfileUrl(currentID);
+        LoggingUtils.print(String.format("get real user id: %s", url));
+        Response response = HttpUtil.getLocal(url, mLoginCookies, true);
+        Jerry doc = Jerry.jerry(response.getHtml());
+        Jerry pagelet = doc.$("div#pagelet_timeline_main_column");
+        String data_gt = pagelet.attr("data-gt");
+        JSONObject json = (JSONObject) new JSONParser().parse(data_gt);
+        if (json.containsKey("profile_owner")) {
+            String real_id = (String) json.get("profile_owner");
+            return real_id;
+        }
+        return "";
     }
 }

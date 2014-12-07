@@ -1,37 +1,47 @@
 package botvn.libraries.message;
 
+import botvn.Constants;
 import botvn.HackUtils;
 import botvn.HttpUtil;
+import botvn.JerryUtil;
 import botvn.Response;
 import botvn.botconfig.BotConfig;
 import botvn.botconfig.BotMessageObject;
+import botvn.botconfig.BotUrlFormatter;
 import botvn.libraries.BotBase;
 import botvn.libraries.LoggingUtils;
 import botvn.libraries.LoginInfo;
+import botvn.libraries.Utils;
 import botvn.libraries.search.BotSearchObject;
+import botvn.libraries.search.BotSearchObjectType;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jodd.jerry.Jerry;
+import jodd.jerry.JerryFunction;
+import org.json.simple.parser.ParseException;
 
 /**
  *
  * @author vanvo
  */
-public class BotMessageAds extends BotBase implements Runnable{
+public class BotMessageAds extends BotBase implements Runnable {
+
     /**
-     * 
+     *
      */
     private Thread mThread;
-    
+
     /**
-     * 
+     *
      */
     private LoginInfo mLoginInfo;
-    
+
     /**
      * For one user
      */
@@ -43,58 +53,63 @@ public class BotMessageAds extends BotBase implements Runnable{
      */
     private List<BotMessageObject> mMessages;
     private List<BotSearchObject> mReceivers;
-    
+
     /**
-     * 
+     *
      */
     private BotMessageAdsListener mMessageListener;
-    
+
     /**
-     * 
-     * @param loginInfo 
+     *
      */
-    public BotMessageAds(LoginInfo loginInfo){
+    private String mMessageHref = "";
+
+    /**
+     *
+     * @param loginInfo
+     */
+    public BotMessageAds(LoginInfo loginInfo) {
         mLoginInfo = loginInfo;
     }
-    
+
     /**
      * Set argument for a user
-     * 
+     *
      * @param message
-     * @param receiver 
+     * @param receiver
      */
-    public void setMessage(String message, String receiver){
+    public void setMessage(String message, String receiver) {
         mMessage = message;
         mReceiver = receiver;
     }
-    
+
     /**
      * Set argument for multi user
-     * 
+     *
      * @param messages
-     * @param receivers 
+     * @param receivers
      */
-    public void setMessages(List<BotMessageObject> messages, List<BotSearchObject> receivers){
+    public void setMessages(List<BotMessageObject> messages, List<BotSearchObject> receivers) {
         mMessages = messages;
         mReceivers = receivers;
     }
-    
+
     /**
-     * 
-     * @param listener 
+     *
+     * @param listener
      */
-    public void setBotMessageListener(BotMessageAdsListener listener){
+    public void setBotMessageListener(BotMessageAdsListener listener) {
         mMessageListener = listener;
     }
-    
+
     /**
-     * 
-     * @throws java.io.IOException 
+     *
+     * @throws java.io.IOException
      */
-    private String Send(String message, String receiver) throws IOException
-    {
+    @Deprecated
+    private String Send(String message, String receiver) throws IOException, InterruptedException {
         LoggingUtils.print(String.format("Sending message to: %s", receiver));
-        
+
         HashMap<String, String> args = new HashMap<>();
         args.put("__a", "1");
         args.put("__user", mLoginInfo.userId);
@@ -128,44 +143,112 @@ public class BotMessageAds extends BotBase implements Runnable{
         args.put("message_batch[0][client_thread_id]", String.format("user:%s", receiver));
         args.put("client", "mercury");
         args.put("ttstamp", HackUtils.generatettstamp(mLoginInfo.fbdtsg));
-        
-        Response response = HttpUtil.postLocal(BotConfig.BotMessage.Url, args, mLoginCookies);
+
+        Response response = HttpUtil.postLocal(BotConfig.BotMessage.Url, args, mLoginCookies, true);
         //LoggingUtils.print(String.format("%s%s%s", StringUtil.repeat("=", 5), "SEND MESSAGE", StringUtil.repeat("=", 5)));
         //LoggingUtils.print(response.getStatusLine().toString());
         return response.getHtml();
     }
 
-    @Override
-    public void run() {
+    /**
+     *
+     * @param message
+     * @param receiver
+     * @return
+     */
+    private boolean SendEx(final String message, final String receiver) {
         try {
-            String results = Send(mMessage, mReceiver);
-            LoggingUtils.print(results);
-            boolean success = isSuccess(results);
-            if(mMessageListener != null){
-                mMessageListener.OnMessageSend(success, success ? mReceiver : null);
+            String realUserId = getRealUserID(receiver);
+            if (realUserId.length() == 0) {
+                return false;
             }
-        } catch (IOException ex) {
+
+            // find and press message button (composer message)
+            String url = BotUrlFormatter.getProfileMobileUrl(realUserId);
+            LoggingUtils.print(String.format("profile user: %s", url));
+            Response response = HttpUtil.getLocal(url, mLoginCookies, true);
+            Jerry doc = Jerry.jerry(response.getHtml());
+            Jerry messageButton = doc.$("div#root div div div table");
+            if (messageButton.length() > 0) {
+                // Find the Message button in the list: Add Friend, Message, Follow or Poke
+                Jerry table = messageButton.first();
+                Jerry list_action = table.$("tr td");
+                if (list_action.length() > 0) {
+                    table.$("tr td").each(new JerryFunction() {
+                        @Override
+                        public boolean onNode(Jerry $this, int index) {
+                            // Only find message
+                            String href = $this.children().attr("href");
+                            if (href.contains("messages/thread")) {
+                                mMessageHref = href;
+                                return false; // break
+                            }
+                            LoggingUtils.print("href = " + href);
+                            return true;
+                        }
+                    });
+                }
+
+                if (mMessageHref.length() > 0) {
+                    // Open composer message page
+                    url = BotUrlFormatter.getShortProfileUrlMobile(mMessageHref);
+                    LoggingUtils.print(String.format("get composer form: %s", url));
+                    response = HttpUtil.getLocal(url, mLoginCookies, true);
+                    doc = Jerry.jerry(response.getHtml());
+                    Jerry composer = doc.$("#composer_form");
+                    if (composer.length() > 0) {
+                        Map<String, String> composerFormParams = JerryUtil.form(composer);
+                        String action = composer.attr("action");
+                        // set message and sent it
+                        composerFormParams.put("body", message);
+                        Response responseSendMessage = HttpUtil.postLocal(BotUrlFormatter.getShortProfileUrlMobile(action), composerFormParams, mLoginCookies, true);
+                        // Read old message
+                        url = String.format(BotUrlFormatter.getUrlReadMessaage(realUserId), receiver);
+                        Response composerResponse = HttpUtil.getLocal(url, mLoginCookies, true);
+                        doc = Jerry.jerry(composerResponse.getHtml());
+                        Jerry messageGroup = doc.$("div#messageGroup div:last-child div:last-child div:first-child div span");
+                        if (messageGroup.length() > 0) {
+                            String lastMessage = messageGroup.text();
+                            if (lastMessage.equals(message)) {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LoggingUtils.print(e.getMessage());
+        } catch (ParseException | InterruptedException ex) {
             Logger.getLogger(BotMessageAds.class.getName()).log(Level.SEVERE, null, ex);
         }
+        return false;
     }
-    
+
+    @Override
+    public void run() {
+        boolean success = SendEx(mMessage, mReceiver);
+        if (mMessageListener != null) {
+            mMessageListener.OnMessageSend(success, success ? mReceiver : null);
+        }
+    }
+
     /**
-     * 
+     *
      */
-    public void start(){
+    public void start() {
         mThread = new Thread(this, this.getClass().getName());
         mThread.start();
     }
-    
-    public void startMultiUser(){
+
+    public void startMultiUser() {
         mThread = new Thread(new MultiUser(), this.getClass().getName());
         mThread.start();
     }
-    
+
     /**
-     * 
+     *
      */
-    class MultiUser implements Runnable{
+    class MultiUser implements Runnable {
 
         @Override
         public void run() {
@@ -173,35 +256,36 @@ public class BotMessageAds extends BotBase implements Runnable{
                 Random rad = new Random();
                 LoggingUtils.print("Sending...");
                 for (BotSearchObject receiver : mReceivers) {
-                    if(mMessageListener != null){
-                        mMessageListener.OnMessageProcessing(receiver.Name);
+                    if ((receiver.Type == BotSearchObjectType.USER) && receiver.IsSelected) {
+                        if (mMessageListener != null) {
+                            mMessageListener.OnMessageProcessing(receiver.Name);
+                        }
+                        rad.setSeed(System.currentTimeMillis());
+                        // get random message
+                        int messageIndex = rad.nextInt(mMessages.size() - 1);
+                        BotMessageObject message = mMessages.get(messageIndex);
+                        String msg = message.toString();
+                        if (msg.contains("@")) {
+                            msg = message.toString().replace("@", receiver.Name);
+                        }
+                        boolean success = SendEx(msg, receiver.ID);
+                        if (mMessageListener != null) {
+                            mMessageListener.OnMessageSend(success, success ? receiver.Name : null);
+                        }
+                        int delay = Utils.randSec(Constants.MIN_DELAY, Constants.MAX_DELAY);
+                        LoggingUtils.print("Delay: " + delay);
+                        Thread.sleep(delay);
                     }
-                    rad.setSeed(System.currentTimeMillis());
-                    Thread.sleep(rad.nextInt(10) * 1000);
-                    // get random message
-                    int messageIndex = rad.nextInt(mMessages.size() - 1);
-                    BotMessageObject message = mMessages.get(messageIndex);
-                    String msg = message.toString();
-                    if(msg.contains("@")){
-                        msg = message.toString().replace("@", receiver.Name);
-                    }
-                    String results = Send(msg, receiver.ID);
-                    LoggingUtils.print(results);
-                    boolean success = isSuccess( results);
-                    if(mMessageListener != null){
-                        mMessageListener.OnMessageSend(success, success ? receiver.Name : null);
-                    }
-                    Thread.sleep(rad.nextInt(30) * 1000);
                 }
-                
-                if(mMessageListener != null){
+
+                if (mMessageListener != null) {
                     mMessageListener.OnMessageSendFinished();
                 }
                 LoggingUtils.print("DONE");
-            } catch (InterruptedException | IOException ex) {
+            } catch (InterruptedException ex) {
                 Logger.getLogger(BotMessageAds.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        
+
     }
 }
