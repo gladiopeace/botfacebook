@@ -1,12 +1,15 @@
 package botvn.libraries.like;
 
+import botvn.Constants;
 import botvn.HackUtils;
 import botvn.HttpUtil;
 import botvn.Response;
 import botvn.botconfig.BotConfig;
+import botvn.botconfig.BotUrlFormatter;
 import botvn.libraries.BotBase;
 import botvn.libraries.LoggingUtils;
 import botvn.libraries.LoginInfo;
+import botvn.libraries.Utils;
 import botvn.libraries.search.BotSearchObject;
 import botvn.libraries.search.BotSearchObjectType;
 import java.io.IOException;
@@ -15,6 +18,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jodd.jerry.Jerry;
 
 /**
  *
@@ -78,9 +82,8 @@ public class BotLike extends BotBase implements Runnable {
                     if (mLikeListener != null) {
                         mLikeListener.OnLikeProcessing(obj.Name);
                     }
-                    String results = Like(obj.ID);
-                    LoggingUtils.print(results);
-                    if (isSuccess(results)) {
+                    boolean results = LikeFanPage(obj.ID);
+                    if (results) {
                         if (mLikeListener != null) {
                             mLikeListener.OnLiked(true);
                         }
@@ -89,12 +92,12 @@ public class BotLike extends BotBase implements Runnable {
                             mLikeListener.OnLiked(false);
                         }
                     }
-                } catch (IOException ex) {
+                } catch (IOException | InterruptedException ex) {
                     Logger.getLogger(BotLike.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 rad.setSeed(System.currentTimeMillis());
                 try {
-                    Thread.sleep(rad.nextInt(rad.nextInt(45) * 1000));
+                    Thread.sleep(Utils.randSec(Constants.MIN_DELAY, Constants.MAX_DELAY));
                 } catch (InterruptedException ex) {
                     Logger.getLogger(BotLike.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -111,7 +114,8 @@ public class BotLike extends BotBase implements Runnable {
      * @return
      * @throws IOException
      */
-    private String Like(String id) throws IOException {
+    @Deprecated
+    private String Like(String id) throws IOException, InterruptedException {
         LoggingUtils.print(String.format("Like: %s", id));
 
         HashMap<String, String> args = new HashMap<>();
@@ -125,8 +129,28 @@ public class BotLike extends BotBase implements Runnable {
         args.put("fan_origin", "page_timeline");
         args.put("fan_source", "");
         args.put("cat", "");
-        Response response = HttpUtil.postLocal(BotConfig.URLLikeFanPage, args, mLoginCookies);
+        Response response = HttpUtil.postLocal(BotConfig.URLLikeFanPage, args, mLoginCookies, false);
         return response.getHtml();
+    }
+    
+    /**
+     * 
+     * @param id
+     * @return
+     * @throws IOException
+     * @throws InterruptedException 
+     */
+    private boolean LikeFanPage(String id) throws IOException, InterruptedException{
+        Response response_fanpage = HttpUtil.getLocal(BotUrlFormatter.getShortProfileUrlMobile(id), mLoginCookies, true);
+        Jerry doc = Jerry.jerry(response_fanpage.getHtml());
+        Jerry url = doc.$("div#sub_profile_pic_content tr td a").first();
+        if(url.length() > 0){
+            String like_url_abs = url.attr("href");
+            String like_url = BotUrlFormatter.getShortProfileUrlMobile(like_url_abs);
+            HttpUtil.getLocal(like_url, mLoginCookies, true);
+            return true;
+        }
+        return false;
     }
 
     /**

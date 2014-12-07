@@ -1,6 +1,7 @@
 package botvn;
 
 import botvn.libraries.LoggingUtils;
+import botvn.libraries.Utils;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -26,6 +27,7 @@ import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.ex.HttpClientRequest;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -35,21 +37,24 @@ public class HttpUtil {
 
     private static final PoolingHttpClientConnectionManager cm = new PoolingHttpClientConnectionManager();
 
+    private static CloseableHttpClient mClient = null;
+
     /**
      * Creates HTTP client. Uses Firefox User-Agent to fool Facebook. Sets
      * cookies from provided CookieStore.
      */
     private static CloseableHttpClient createHttpLocalClient(CookieStore cookieStore) {
-        HttpClientContext cc = HttpClientContext.create();
-        cc.setCookieStore(cookieStore);
-
-        //RequestConfig globalConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.BEST_MATCH).build();
-        CloseableHttpClient client = HttpClients.custom().setConnectionManager(cm).setDefaultCookieStore(cookieStore).build();
-        HttpClients.custom().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.9; rv:10.0) Gecko/20100101 Firefox/10.0");
+        if (mClient == null) {
+            HttpClientContext cc = HttpClientContext.create();
+            cc.setCookieStore(cookieStore);
+            //RequestConfig globalConfig = RequestConfig.custom().setCookieSpec(CookieSpecs.BEST_MATCH).build();
+            mClient = HttpClients.custom().setConnectionManager(cm).setDefaultCookieStore(cookieStore).build();
+            HttpClients.custom().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:35.0) Gecko/20100101 Firefox/35.0");
 
             //CloseableHttpClient client = HttpClients.custom().setConnectionManager(cm).setDefaultCookieStore(cookieStore).build();
-        //HttpClients.custom().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:33.0) Gecko/20100101 Firefox/33.0");
-        return client;
+            //HttpClients.custom().setUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:33.0) Gecko/20100101 Firefox/33.0");
+        }
+        return mClient;
     }
 
     /**
@@ -71,11 +76,12 @@ public class HttpUtil {
     /**
      * Sends GET request.
      */
-    public static Response getLocal(String url, CookieStore cookieStore) throws IOException {
+    public static Response getLocal(String url, CookieStore cookieStore, boolean setdelay) throws IOException, InterruptedException {
         CloseableHttpClient client = createHttpLocalClient(cookieStore);
         HttpClientContext context = HttpClientContext.create();
         try {
             HttpGet httpget = new HttpGet(url);
+            httpget.addHeader("Charset", "UTF-8");
             CloseableHttpResponse response = client.execute(httpget, context);
 
             HttpEntity entity = response.getEntity();
@@ -84,6 +90,18 @@ public class HttpUtil {
             }
             String content = EntityUtils.toString(entity);
             Response r = new Response(content, response.getStatusLine(), context.getCookieStore());
+            
+            // Get all headers
+            HttpResponse rr = context.getResponse();
+            HeaderIterator headers = rr.headerIterator();
+            while (headers.hasNext()) {
+                System.out.println(headers.next());
+            }
+            if (setdelay) {
+                int delay = Utils.randSec(Constants.MIN_DELAY_REQUEST, Constants.MAX_DELAY_REQUEST);
+                LoggingUtils.print(String.format("Delay: %ds", delay));
+                Thread.sleep(delay);
+            }
             return r;
         } finally {
         }
@@ -111,16 +129,22 @@ public class HttpUtil {
 
     /**
      * Sends POST request.
+     * @param action
+     * @param parameters
+     * @param cookieStore
+     * @param setdelay
+     * @return 
+     * @throws java.io.IOException
+     * @throws java.lang.InterruptedException
      */
-    public static Response postLocal(String action, Map<String, String> parameters, CookieStore cookieStore) throws IOException {
+    public static Response postLocal(String action, Map<String, String> parameters, CookieStore cookieStore, boolean setdelay) throws IOException, InterruptedException {
         CloseableHttpClient client = createHttpLocalClient(cookieStore);
         HttpClientContext context = HttpClientContext.create();
         context.setCookieStore(cookieStore);
-        
+
         HttpClientRequest httpPost = new HttpClientRequest(action);
         httpPost.setDebugMode(LoggingUtils.DEBUG);
-        
-        List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+        List<NameValuePair> nvps = new ArrayList<>();
         for (Map.Entry<String, String> entry : parameters.entrySet()) {
             String name = entry.getKey();
             if (name == null) {
@@ -129,27 +153,32 @@ public class HttpUtil {
             String value = entry.getValue();
             nvps.add(new BasicNameValuePair(name, value));
         }
-
-        httpPost.setHeader(HTTP.CONTENT_TYPE, "text/xml");
-        httpPost.setEntity(nvps);
-        httpPost.addHeader(HTTP.CHUNK_CODING, "None");
-        httpPost.addHeader(HTTP.USER_AGENT, "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.10; rv:33.0) Gecko/20100101 Firefox/33.0");
-        System.out.println("uri:" + httpPost.getURI().toString());
-        RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(6000).setConnectTimeout(6000).build();
-        httpPost.setConfig(requestConfig);
         
+        httpPost.setEntity(nvps);
+        System.out.println("uri:" + httpPost.getURI().toString());
+        RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(30 * 1000).setConnectTimeout(30 * 1000).build();
+        httpPost.setConfig(requestConfig);
+
+        context.setRequestConfig(requestConfig);
         HttpResponse response = client.execute(httpPost, context);
         response = context.getResponse();
+
         HeaderIterator headers = response.headerIterator();
-        while(headers.hasNext()){
+        while (headers.hasNext()) {
             System.out.println(headers.next());
         }
         
+
         HttpEntity entity = response.getEntity();
         if (entity == null) {
             return null;
         }
         String content = EntityUtils.toString(entity);
+        if (setdelay) {
+            int delay = Utils.randSec(Constants.MIN_DELAY_REQUEST, Constants.MAX_DELAY_REQUEST);
+            LoggingUtils.print(String.format("Delay: %ds", delay));
+            Thread.sleep(delay);
+        }
         return new Response(content, response.getStatusLine(), context.getCookieStore());
     }
 
@@ -157,7 +186,7 @@ public class HttpUtil {
      * Sends POST request.
      */
     @Deprecated
-    public static Response post(String action, Map<String, String> parameters, CookieStore cookieStore) throws IOException {
+    public static Response post(String action, Map<String, String> parameters, CookieStore cookieStore) throws IOException, InterruptedException {
         DefaultHttpClient httpclient = createHttpClient(cookieStore);
 
         httpclient.setRedirectStrategy(new DefaultRedirectStrategy() {
@@ -200,6 +229,7 @@ public class HttpUtil {
 
         String content = EntityUtils.toString(entity);
         httpclient.getConnectionManager().shutdown();
+        Thread.sleep(Utils.randSec(10, 30));
         return new Response(content, response.getStatusLine(), httpclient.getCookieStore());
     }
 }

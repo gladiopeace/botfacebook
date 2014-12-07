@@ -1,7 +1,7 @@
 package botvn.botconfig;
 
+import botvn.Constants;
 import botvn.HttpUtil;
-import botvn.RemoteConstants;
 import botvn.Response;
 import java.io.IOException;
 import java.util.logging.Level;
@@ -34,7 +34,7 @@ public final class BotConfigRequest implements Runnable {
     @Override
     public void run() {
         try {
-            Response response = HttpUtil.getLocal(RemoteConstants.URL_CONFIG, null);
+            Response response = HttpUtil.getLocal(Constants.URL_CONFIG, null, false);
             if (response.getHtml() != null) {
                 JSONParser json = new JSONParser();
                 JSONObject j = (JSONObject) json.parse(response.getHtml());
@@ -45,6 +45,10 @@ public final class BotConfigRequest implements Runnable {
 
                         if (fbParse.containsKey("url_home")) {
                             BotConfig.URLHome = (String) fbParse.get("url_home");
+                        }
+                        
+                        if (fbParse.containsKey("url_home_mobile")) {
+                            BotConfig.URLHomeMobile = (String) fbParse.get("url_home_mobile");
                         }
 
                         if (fbParse.containsKey("url_profile")) {
@@ -65,6 +69,30 @@ public final class BotConfigRequest implements Runnable {
                         
                         if(fbParse.containsKey("url_like_fanpage")){
                             BotConfig.URLLikeFanPage = (String)fbParse.get("url_like_fanpage");
+                        }
+                        
+                        if(fbParse.containsKey("url_post_send_message")){
+                            BotConfig.URLSendMessage = (String)fbParse.get("url_post_send_message");
+                        }
+                        
+                        if(fbParse.containsKey("url_get_composer_form")){
+                            BotConfig.URLComposerForm = (String)fbParse.get("url_get_composer_form");
+                        }
+                        
+                        if(fbParse.containsKey("url_get_group")){
+                            BotConfig.URLGroupProfile = (String)fbParse.get("url_get_group");
+                        }
+                        
+                        if(fbParse.containsKey("url_search_form")){
+                            BotConfig.URLSearchForm = (String)fbParse.get("url_search_form");
+                        }
+                        
+                        if(fbParse.containsKey("url_read_message")){
+                            BotConfig.URLReadSendMessage = (String)fbParse.get("url_read_message");
+                        }
+                        
+                        if(fbParse.containsKey("url_seemore_groups")){
+                            BotConfig.UrlSeeMoreGroups = (String)fbParse.get("url_seemore_groups");
                         }
                     }
 
@@ -122,6 +150,8 @@ public final class BotConfigRequest implements Runnable {
             if (mBotConfigListener != null) {
                 mBotConfigListener.OnInitError();
             }
+            Logger.getLogger(BotConfigRequest.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InterruptedException ex) {
             Logger.getLogger(BotConfigRequest.class.getName()).log(Level.SEVERE, null, ex);
         }
         if (mBotConfigListener != null) {

@@ -24,17 +24,17 @@ public class BotUtils {
      * @param cks : cookie when login with facebook
      * @return
      */
-    public static String getAccessToken(CookieStore cks) throws IOException {
+    public static String getAccessToken(CookieStore cks) throws IOException, InterruptedException {
         if (cks == null) {
             return null;
         }
         
-        Response response = HttpUtil.getLocal(BotConfig.URLShortAccessToken, cks);
+        Response response = HttpUtil.getLocal(BotConfig.URLShortAccessToken, cks, false);
         Jerry doc = Jerry.jerry(response.getHtml());
         String href = doc.$("a").attr("href");
         if (href != null) {
             // Get access token short lived
-            response = HttpUtil.getLocal(href, cks);
+            response = HttpUtil.getLocal(href, cks, false);
             String jsonRaw = response.getHtml();
             JsonParser jsonResults = new JsonParser();
             Map<String, String> json = jsonResults.parse(jsonRaw);
@@ -43,10 +43,10 @@ public class BotUtils {
                 String accessToken = json.get("access_token");
                 String url = BotConfig.URLLongAccessToken + "&access_token=" + accessToken;
                 // Get access token long lived (2 months)
-                response = HttpUtil.getLocal(url, cks);
+                response = HttpUtil.getLocal(url, cks, false);
                 json = jsonResults.parse(response.getHtml());
                 url = json.get("url");
-                response = HttpUtil.getLocal(url, cks);
+                response = HttpUtil.getLocal(url, cks, false);
                 String rawResult = response.getHtml();
                 String[] tmp = rawResult.split("&");
                 if(tmp.length > 1){
@@ -65,12 +65,12 @@ public class BotUtils {
      * @return
      * @throws IOException 
      */
-    public static String getFriends(CookieStore cks) throws IOException{
+    public static String getFriends(CookieStore cks) throws IOException, InterruptedException{
         if(cks == null) return null;
         HttpBrowser browser = new HttpBrowser();
         HttpRequest request = HttpRequest.get(BotConfig.URLHome + "van.vo0?sk=friends");
         
-        Response response = HttpUtil.getLocal(BotConfig.URLHome + "van.vo0?sk=friends", cks);
+        Response response = HttpUtil.getLocal(BotConfig.URLHome + "van.vo0?sk=friends", cks, false);
         String html = response.getHtml();
         return "";
     }
@@ -90,9 +90,9 @@ public class BotUtils {
      * @return
      * @throws IOException 
      */
-    public static Response loginToFacebook(String email, String pass) throws IOException {
+    public static Response loginToFacebook(String email, String pass) throws IOException, InterruptedException {
         System.out.println("login...");
-        Response response = HttpUtil.getLocal("https://www.facebook.com", null);// HttpUtil.get("http://www.facebook.com", null);
+        Response response = HttpUtil.getLocal(BotConfig.URLHomeMobile, null, true);// HttpUtil.get("http://www.facebook.com", null);
         Jerry doc = Jerry.jerry(response.getHtml());
         Jerry loginForm = doc.$("#login_form");
 
@@ -102,7 +102,7 @@ public class BotUtils {
         loginFormParams.put("email", email);
         loginFormParams.put("pass", pass);
         CookieStore cks = response.getCookieStore();
-        Response loginResponse = HttpUtil.postLocal(action, loginFormParams, cks);
+        Response loginResponse = HttpUtil.postLocal(action, loginFormParams, cks, true);
         return loginResponse;
     }
 }

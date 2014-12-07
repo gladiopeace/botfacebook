@@ -102,7 +102,7 @@ public class BotSearch extends BotBase implements Runnable{
      */
     private void searchEvent(String url){
         try {
-            Response res = HttpUtil.getLocal(url, mCks);
+            Response res = HttpUtil.getLocal(url, mCks, false);
             if (res.getHtml() != null) {
                 JSONParser jsonParser = new JSONParser();
                 JSONObject jsonPage = (JSONObject) jsonParser.parse(res.getHtml());
@@ -165,6 +165,8 @@ public class BotSearch extends BotBase implements Runnable{
             }
         } catch (IOException | ParseException ex) {
             Logger.getLogger(BotFanPage.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(BotSearch.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
     

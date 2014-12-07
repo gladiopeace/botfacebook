@@ -113,7 +113,7 @@ public final class BotConfigLocal {
     public static boolean write(String filepath, String jsonString) {
         try {
             sFileWriter = new FileOutputStream(filepath);
-            try (OutputStreamWriter write = new OutputStreamWriter(sFileWriter)) {
+            try (OutputStreamWriter write = new OutputStreamWriter(sFileWriter, "UTF-8")) {
                 write.write(jsonString);
             }
             sFileWriter.flush();

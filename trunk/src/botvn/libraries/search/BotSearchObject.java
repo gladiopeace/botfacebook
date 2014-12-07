@@ -9,6 +9,7 @@ public class BotSearchObject {
     public String ID;
     public String Name;
     public BotSearchObjectType Type;
+    public String URL;
 
     @Override
     public String toString() {

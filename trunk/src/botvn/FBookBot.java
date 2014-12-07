@@ -6,6 +6,7 @@ import botvn.botconfig.BotConfigRequest;
 import botvn.libraries.BotUtils;
 import botvn.libraries.LoggingUtils;
 import botvn.libraries.LoginInfo;
+import botvn.libraries.Utils;
 import botvn.libraries.message.BotMessageAds;
 import jodd.jerry.Jerry;
 import jodd.jerry.JerryFunction;
@@ -21,8 +22,10 @@ import java.security.spec.InvalidParameterSpecException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.IntStream;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
@@ -34,7 +37,18 @@ public class FBookBot implements BotConfigListener{
     private static Response mResponseLogin = null;
     
     public static void main(String[] args) throws IOException {
-        new BotConfigRequest(new FBookBot()).start();
+        /* Test random number in range
+        for(int i = 0; i < 60; i++){
+            int rad = Utils.randInt(10, 50);
+            LoggingUtils.print("random: " + rad);
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ex) {
+                Logger.getLogger(FBookBot.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        
+        //new BotConfigRequest(new FBookBot()).start();
         
         // Send message ads
         //mResponseLogin = loginToFacebook(EMAIL, PASS);
@@ -88,7 +102,7 @@ public class FBookBot implements BotConfigListener{
             String access_token = BotUtils.getAccessToken(mResponseLogin.getCookieStore());
             System.out.println("access_token: " + access_token);
             
-        } catch (IOException ex) {
+        } catch (IOException | InterruptedException ex) {
             Logger.getLogger(FBookBot.class.getName()).log(Level.SEVERE, null, ex);
         }
         
@@ -100,11 +114,11 @@ public class FBookBot implements BotConfigListener{
     }
     
 
-    static Response getUserInfo(String userID, CookieStore cks) throws IOException {
+    static Response getUserInfo(String userID, CookieStore cks) throws IOException, InterruptedException {
         //
         String url = String.format(BotConfig.URLProfile, userID);
         
-        Response me = HttpUtil.getLocal(url, cks);
+        Response me = HttpUtil.getLocal(url, cks, false);
         String htmlMe = me.getHtml();
         Jerry doc = Jerry.jerry(htmlMe);
         
@@ -119,9 +133,9 @@ public class FBookBot implements BotConfigListener{
     /**
      * Creates new Facebook session.
      */
-    public static Response loginToFacebook(String email, String pass) throws IOException {
+    public static Response loginToFacebook(String email, String pass) throws IOException, InterruptedException {
         System.out.println("login...");
-        Response response = HttpUtil.getLocal("https://www.facebook.com", null);// HttpUtil.get("http://www.facebook.com", null);
+        Response response = HttpUtil.getLocal("https://www.facebook.com", null, false);// HttpUtil.get("http://www.facebook.com", null);
         Jerry doc = Jerry.jerry(response.getHtml());
         Jerry loginForm = doc.$("#login_form");
 
@@ -131,18 +145,18 @@ public class FBookBot implements BotConfigListener{
         loginFormParams.put("email", email);
         loginFormParams.put("pass", pass);
         CookieStore cks = response.getCookieStore();
-        Response loginResponse = HttpUtil.postLocal(action, loginFormParams, cks);
+        Response loginResponse = HttpUtil.postLocal(action, loginFormParams, cks, false);
         return loginResponse;
     }
 
     /**
      * Reads the page with friends proposals.
      */
-    public static Response findFriends(Response response) throws IOException {
+    public static Response findFriends(Response response) throws IOException, InterruptedException {
         System.out.println("finding friends...");
         // another link: https://www.facebook.com/?sk=ff
         // https://www.facebook.com/friends/requests/?ref=tn&fcref=ffb
-        response = HttpUtil.getLocal("https://www.facebook.com/?sk=ff", response.getCookieStore());
+        response = HttpUtil.getLocal("https://www.facebook.com/?sk=ff", response.getCookieStore(), false);
         return response;
     }
 
@@ -183,6 +197,8 @@ public class FBookBot implements BotConfigListener{
                     } catch (IOException ioex) {
 
                         System.out.println("failed.");
+                    } catch (InterruptedException ex) {
+                        Logger.getLogger(FBookBot.class.getName()).log(Level.SEVERE, null, ex);
                     }
 
                     numberOfFriendsToInvite.value--;
@@ -192,7 +208,7 @@ public class FBookBot implements BotConfigListener{
         });
     }
 
-    public static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, Response response) throws IOException {
+    public static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, Response response) throws IOException, InterruptedException {
         System.out.println(">>> adding friend: " + facebookUserId);
 
         HashMap<String, String> params = new HashMap<String, String>();
@@ -207,23 +223,23 @@ public class FBookBot implements BotConfigListener{
         params.put("ttstamp", HackUtils.generatettstamp(fb_dtsg));
         String url = String.format("https://www.facebook.com/ajax/add_friend/action.php");
 
-        response = HttpUtil.postLocal(url, params, response.getCookieStore());
+        response = HttpUtil.postLocal(url, params, response.getCookieStore(), false);
         System.out.println(response.getStatusLine());
         System.out.println(response.getHtml());
     }
 
-    static void sendMessage(String message, String access_token, String facebookUserId) throws IOException {
+    static void sendMessage(String message, String access_token, String facebookUserId) throws IOException, InterruptedException {
         HashMap<String, String> params = new HashMap<String, String>();
 
         params.put("message", message);
         params.put("access_token", access_token);
 
-        Response response = HttpUtil.postLocal("https://graph.facebook.com/" + facebookUserId + "/feed", params, null);
+        Response response = HttpUtil.postLocal("https://graph.facebook.com/" + facebookUserId + "/feed", params, null, false);
         System.out.println(response.getStatusLine());
         System.out.println(response.getHtml());
     }
 
-    public static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, CookieStore cks) throws IOException {
+    public static void addFriend(String facebookUserId, String friendFacebookId, String fb_dtsg, CookieStore cks) throws IOException, InterruptedException {
         System.out.println(">>> adding friend: " + facebookUserId);
 
         HashMap<String, String> params = new HashMap<String, String>();
@@ -238,7 +254,7 @@ public class FBookBot implements BotConfigListener{
         params.put("ttstamp", HackUtils.generatettstamp(fb_dtsg));
         String url = String.format("https://www.facebook.com/ajax/add_friend/action.php");
 
-        Response response = HttpUtil.postLocal(url, params, cks);
+        Response response = HttpUtil.postLocal(url, params, cks, false);
         System.out.println(response.getStatusLine());
         System.out.println(response.getHtml());
     }

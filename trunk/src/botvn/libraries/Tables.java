@@ -37,5 +37,12 @@ public class Tables {
         public static final int NO = 0;
         public static final int NAME = 1; 
         public static final int STATUS = 2;
+        public static final int TIME = 3;
+    }
+    
+    public class MY_GROUPS{
+        public static final int NO = 0;
+        public static final int SELECTION = 1; 
+        public static final int NAME = 2;
     }
 }

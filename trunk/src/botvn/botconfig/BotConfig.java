@@ -6,11 +6,19 @@ package botvn.botconfig;
  */
 public final class BotConfig{
     public static String URLHome;
+    public static String URLHomeMobile;
     public static String URLProfile;
     public static String URLShortAccessToken;
     public static String URLLongAccessToken;
     public static String URLFriends;
     public static String URLLikeFanPage;
+    public static String URLLogin;
+    public static String URLComposerForm;
+    public static String URLSendMessage;
+    public static String URLReadSendMessage;
+    public static String URLGroupProfile;
+    public static String URLSearchForm;
+    public static String UrlSeeMoreGroups;
     
     /**
      * 
